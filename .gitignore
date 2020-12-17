@@ -1,0 +1,5 @@
+.idea
+.DS_Store
+out
+target
+/src/main/java/META-INF/MANIFEST.MF
