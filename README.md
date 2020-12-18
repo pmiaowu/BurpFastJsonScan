@@ -106,4 +106,10 @@ json的这种就是请求包的内容直接就是json不带参数的那种, 也�
 - [-] not found fastJson = 没有扫描出使用了 fastJson
 - [+] found fastJson = 使用了 fastJson 并且出网
 
+发生 fastJson scan unknown error 的时候
+
+可以先看看是否可以正常访问 http://www.dnslog.cn/ 这个站点, 如果不行的话, 就换一个可以访问 http://www.dnslog.cn/ 的wifi
+
+接着可能就是waf拦截的问题, 毕竟发的是有害的payload, 有waf拦截也是没办法的事情
+
 注意: 发生异常错误的时候,不用担心下次不会扫描了,下次访问该站点的时候依然会尝试扫描,直到扫描完毕为止
