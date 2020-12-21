@@ -2,6 +2,7 @@ package burp.Bootstrap;
 
 import burp.*;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,13 +42,36 @@ public class BurpAnalyzedRequest {
      * @return
      */
     public boolean isRequestParameterContentJson() {
-        byte contentType = this.analyzeRequest().getContentType();
-        if (contentType != 4) {
-            if (this.getAllJsonParameters().isEmpty()) {
-                return false;
-            }
+        if (this.customHelpers.isJson(this.getHttpRequestBody(this.requestResponse()))) {
+            return true;
         }
+
+        if (this.getAllJsonParameters().isEmpty()) {
+            return false;
+        }
+
         return true;
+    }
+
+    /**
+     * 获取请求的Body内容
+     * @param httpRequestResponse
+     * @return String
+     */
+    private String getHttpRequestBody(IHttpRequestResponse httpRequestResponse) {
+        byte[] request = httpRequestResponse.getRequest();
+        IRequestInfo requestInfo = this.helpers.analyzeRequest(request);
+
+        int httpBodyOffset = requestInfo.getBodyOffset();
+        int httpBodyLength = request.length - httpBodyOffset;
+
+        String httpBody = null;
+        try {
+            httpBody = new String(request, httpBodyOffset, httpBodyLength, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+        return httpBody;
     }
 
     /**
