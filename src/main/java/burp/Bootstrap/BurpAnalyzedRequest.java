@@ -19,7 +19,7 @@ public class BurpAnalyzedRequest {
 
     public BurpAnalyzedRequest(IBurpExtenderCallbacks callbacks, IHttpRequestResponse requestResponse) {
         this.callbacks = callbacks;
-        this.helpers = callbacks.getHelpers();
+        this.helpers = this.callbacks.getHelpers();
 
         this.customHelpers = new CustomHelpers();
 
@@ -55,6 +55,7 @@ public class BurpAnalyzedRequest {
 
     /**
      * 获取请求的Body内容
+     *
      * @param httpRequestResponse
      * @return String
      */
@@ -78,13 +79,19 @@ public class BurpAnalyzedRequest {
      * 设置提取所有的json参数
      */
     public void setJsonParameters() {
-        byte contentType = this.analyzeRequest().getContentType();
-
-        if (contentType == 4) {
+        if (this.analyzeRequest().getParameters().isEmpty()) {
             return;
         }
 
         for (IParameter p : this.analyzeRequest().getParameters()) {
+            if (p.getType() == 2 || p.getType() == 6) {
+                continue;
+            }
+
+            if (p.getName() == null || "".equals(p.getName())) {
+                continue;
+            }
+
             if (this.customHelpers.isJson(this.helpers.urlDecode(p.getValue()))) {
                 this.jsonParameters.add(p);
             }
