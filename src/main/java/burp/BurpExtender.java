@@ -14,7 +14,7 @@ import burp.CustomErrorException.TaskTimeoutException;
 public class BurpExtender implements IBurpExtender, IScannerCheck {
 
     public static String NAME = "FastJsonScan";
-    public static String VERSION = "1.0.4";
+    public static String VERSION = "1.0.5";
 
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;

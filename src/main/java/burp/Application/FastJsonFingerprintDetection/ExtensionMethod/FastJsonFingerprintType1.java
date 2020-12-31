@@ -94,7 +94,7 @@ public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
         // 防止因为dnslog卡导致没有检测到的问题, 这里进行二次检测, 保证不会漏报
         // 睡眠一段时间, 给dnslog一个缓冲时间
         try {
-            Thread.sleep(2000);
+            Thread.sleep(6000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
