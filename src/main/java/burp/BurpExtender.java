@@ -14,7 +14,7 @@ import burp.CustomErrorException.TaskTimeoutException;
 public class BurpExtender implements IBurpExtender, IScannerCheck {
 
     public static String NAME = "FastJsonScan";
-    public static String VERSION = "1.0.5";
+    public static String VERSION = "1.0.6";
 
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
@@ -61,12 +61,6 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
         String baseRequestHost = baseRequestResponse.getHttpService().getHost();
         int baseRequestPort = baseRequestResponse.getHttpService().getPort();
         String baseRequestDomainName = baseRequestProtocol + "://" + baseRequestHost + ":" + baseRequestPort;
-
-        // 判断对应参数是否为空，为空不执行
-        IRequestInfo analyzedRequest = this.helpers.analyzeRequest(baseRequestResponse.getRequest());
-        if (analyzedRequest.getParameters().isEmpty()) {
-            return issues;
-        }
 
         // 判断是否有json，没有就不执行
         BurpAnalyzedRequest baseAnalyzedRequest = new BurpAnalyzedRequest(this.callbacks, baseRequestResponse);
