@@ -4,6 +4,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.ArrayList;
 import java.io.PrintWriter;
+import java.net.MalformedURLException;
 
 import burp.Bootstrap.DomainNameRepeat;
 import burp.Bootstrap.UrlRepeat;
@@ -14,7 +15,7 @@ import burp.CustomErrorException.TaskTimeoutException;
 public class BurpExtender implements IBurpExtender, IScannerCheck {
 
     public static String NAME = "FastJsonScan";
-    public static String VERSION = "1.0.6";
+    public static String VERSION = "1.0.7";
 
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
@@ -54,16 +55,24 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
     public List<IScanIssue> doPassiveScan(IHttpRequestResponse baseRequestResponse) {
         List<IScanIssue> issues = new ArrayList<IScanIssue>();
 
-        URL baseHttpRequestUrl = this.helpers.analyzeRequest(baseRequestResponse).getUrl();
-
         // 基础请求域名构造
         String baseRequestProtocol = baseRequestResponse.getHttpService().getProtocol();
         String baseRequestHost = baseRequestResponse.getHttpService().getHost();
         int baseRequestPort = baseRequestResponse.getHttpService().getPort();
+        String baseRequestPath = this.helpers.analyzeRequest(baseRequestResponse).getUrl().getPath();
+
         String baseRequestDomainName = baseRequestProtocol + "://" + baseRequestHost + ":" + baseRequestPort;
+
+        URL baseHttpRequestUrl = null;
+        try {
+            baseHttpRequestUrl = new URL(baseRequestDomainName + "/" + baseRequestPath);
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
 
         // 判断是否有json，没有就不执行
         BurpAnalyzedRequest baseAnalyzedRequest = new BurpAnalyzedRequest(this.callbacks, baseRequestResponse);
+
         if (!baseAnalyzedRequest.isRequestParameterContentJson()) {
             return issues;
         }
@@ -77,8 +86,8 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
         IRequestInfo analyzedIResponseInfo = this.helpers.analyzeRequest(baseRequestResponse.getRequest());
         String baseRequestMethod = analyzedIResponseInfo.getMethod();
 
-        URL baseRequestUrl = this.helpers.analyzeRequest(baseRequestResponse).getUrl();
-        String newBaseUrl = this.urlRepeat.RemoveUrlParameterValue(baseRequestUrl.toString());
+
+        String newBaseUrl = this.urlRepeat.RemoveUrlParameterValue(baseHttpRequestUrl.toString());
 
         // url重复检查
         if (this.urlRepeat.check(baseRequestMethod, newBaseUrl)) {
@@ -93,7 +102,7 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
         int tagId = this.tags.add(
                 "",
                 this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
-                baseRequestUrl.toString(),
+                baseHttpRequestUrl.toString(),
                 this.helpers.analyzeResponse(baseResponse).getStatusCode() + "",
                 "waiting for test results",
                 baseRequestResponse
@@ -116,7 +125,7 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
                         tagId,
                         fastJsonFingerprint.run().getExtensionName(),
                         this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
-                        baseRequestUrl.toString(),
+                        baseHttpRequestUrl.toString(),
                         this.helpers.analyzeResponse(baseResponse).getStatusCode() + "",
                         "[-] not found fastJson",
                         baseRequestResponse
@@ -140,7 +149,7 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
                     tagId,
                     fastJsonFingerprint.run().getExtensionName(),
                     this.helpers.analyzeRequest(fastJsonFingerprintRequestResponse).getMethod(),
-                    baseRequestUrl.toString(),
+                    baseHttpRequestUrl.toString(),
                     this.helpers.analyzeResponse(fastJsonFingerprintResponse).getStatusCode() + "",
                     "[+] found fastJson",
                     fastJsonFingerprintRequestResponse
@@ -160,7 +169,7 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
                     tagId,
                     "",
                     this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
-                    baseRequestUrl.toString(),
+                    baseHttpRequestUrl.toString(),
                     this.helpers.analyzeResponse(baseResponse).getStatusCode() + "",
                     "fastJson scan task timeout",
                     baseRequestResponse
@@ -180,7 +189,7 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
                     tagId,
                     "",
                     this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
-                    baseRequestUrl.toString(),
+                    baseHttpRequestUrl.toString(),
                     this.helpers.analyzeResponse(baseResponse).getStatusCode() + "",
                     "fastJson scan unknown error",
                     baseRequestResponse
