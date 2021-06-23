@@ -1,4 +1,4 @@
-package burp.Application.FastJsonFingerprintDetection.ExtensionMethod;
+package burp.Application.FastJsonDnsLogDetection.ExtensionMethod;
 
 import java.io.PrintWriter;
 import java.net.URL;
@@ -12,7 +12,7 @@ import burp.CustomErrorException.TaskTimeoutException;
 import burp.DnsLogModule.DnsLog;
 import burp.Bootstrap.CustomHelpers;
 
-public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
+public class FastJsonDnsLogType1 extends FastJsonDnsLogTypeAbstract {
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
 
@@ -32,7 +32,7 @@ public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
     private ArrayList<String> dnsLogUrlArrayList = new ArrayList<String>();
     private ArrayList<IHttpRequestResponse> httpRequestResponseArrayList = new ArrayList<IHttpRequestResponse>();
 
-    public FastJsonFingerprintType1(
+    public FastJsonDnsLogType1(
             IBurpExtenderCallbacks callbacks,
             BurpAnalyzedRequest baseAnalyzedRequest,
             String[] payloads,
@@ -52,7 +52,7 @@ public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
         this.startDate = startDate;
         this.maxExecutionTime = maxExecutionTime;
 
-        this.setExtensionName("FastJsonFingerprintType1");
+        this.setExtensionName("FastJsonDnsLogType1");
         this.registerExtension();
 
         this.runExtension();
@@ -60,17 +60,17 @@ public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
 
     private void runExtension() {
         if (this.payloads == null || this.payloads.length <= 0) {
-            throw new IllegalArgumentException("FastJson指纹识别扩展-要进行检测的payload不能为空, 请检查");
+            throw new IllegalArgumentException("FastJsonDnsLog识别扩展-要进行检测的payload不能为空, 请检查");
         }
 
-        // FastJson指纹识别
+        // FastJsonDnsLog识别
         for (String payload : this.payloads) {
             // 说明接收到了dnslog请求确定是FastJson
-            if (this.isFastJsonFingerprint()) {
+            if (this.isFastJson()) {
                 return;
             }
 
-            // 如果dnslog有内容但是 this.isFastJsonFingerprint() 为false
+            // 如果dnslog有内容但是 this.isFastJson() 为false
             // 这可能是因为 请求发出去了 dnslog还没反应过来
             // 这种情况后面的循环就没必要了, 退出该循环
             // 等待二次验证即可
@@ -85,16 +85,16 @@ public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
             int currentTime = this.customHelpers.getSecondTimestamp(new Date());
             int runTime = currentTime - startTime;
             if (runTime >= this.maxExecutionTime) {
-                throw new TaskTimeoutException("fastjson fingerprint scan task timeout");
+                throw new TaskTimeoutException("FastJson DnsLog scan task timeout");
             }
 
-            this.fastJsonFingerprintDetection(payload);
+            this.fastJsonDnsLogDetection(payload);
         }
 
         // 防止因为dnslog卡导致没有检测到的问题, 这里进行二次检测, 保证不会漏报
         // 睡眠一段时间, 给dnslog一个缓冲时间
         try {
-            Thread.sleep(6000);
+            Thread.sleep(8000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -123,10 +123,17 @@ public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
     }
 
     /**
-     * 指纹检测
+     * DnsLog检测
      */
-    private void fastJsonFingerprintDetection(String payload) {
-        String dnsLogUrl = this.customHelpers.randomStr(8) + "." + this.dnsLog.run().getTemporaryDomainName();
+    private void fastJsonDnsLogDetection(String payload) {
+        String dnsLogUrl = null;
+        if (payload.indexOf("ldap://") >= 1) {
+            dnsLogUrl =  this.customHelpers.randomStr(8) + "." + "ldap" + "." + this.dnsLog.run().getTemporaryDomainName();
+        } else if (payload.indexOf("rmi://") >= 1) {
+            dnsLogUrl =  this.customHelpers.randomStr(8) + "." + "rmi" + "." + this.dnsLog.run().getTemporaryDomainName();
+        } else {
+            dnsLogUrl = this.customHelpers.randomStr(8) + "." + this.dnsLog.run().getTemporaryDomainName();
+        }
 
         // 发送请求
         IHttpRequestResponse newHttpRequestResponse = this.makeHttpRequest(payload, dnsLogUrl);
@@ -214,7 +221,7 @@ public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
      * 设置问题详情
      */
     private void setIssuesDetail(IHttpRequestResponse httpRequestResponse, String dnsLogUrl) {
-        this.setFastJsonFingerprint();
+        this.setFastJson();
         this.setHttpRequestResponse(httpRequestResponse);
 
         this.sendDnsLogUrl = dnsLogUrl;
@@ -222,14 +229,14 @@ public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
 
     @Override
     public IScanIssue export() {
-        if (!this.isFastJsonFingerprint()) {
+        if (!this.isFastJson()) {
             return null;
         }
 
         IHttpRequestResponse newHttpRequestResponse = this.getHttpRequestResponse();
         URL newHttpRequestUrl = this.helpers.analyzeRequest(newHttpRequestResponse).getUrl();
 
-        String str1 = String.format("<br/>=============FastJsonFingerprintType1============<br/>");
+        String str1 = String.format("<br/>=============FastJsonDnsLogType1============<br/>");
         String str2 = String.format("ExtensionMethod: %s <br/>", this.getExtensionName());
         String str3 = String.format("sendDnsLogUrl: %s <br/>", this.sendDnsLogUrl);
         String str4 = String.format("=====================================<br/>");
@@ -244,18 +251,23 @@ public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
 
         String detail = str1 + str2 + str3 + str4 + str5 + str6 + str7 + str8;
 
+        String severity = "Medium";
+        if (str7.indexOf("ldap.") >= 1 || str7.indexOf("rmi.") >= 1) {
+            severity = "High";
+        }
+
         return new CustomScanIssue(
                 newHttpRequestResponse.getHttpService(),
                 newHttpRequestUrl,
                 new IHttpRequestResponse[] { newHttpRequestResponse },
                 "FastJson",
                 detail,
-                "High");
+                severity);
     }
 
     @Override
     public void consoleExport() {
-        if (!this.isFastJsonFingerprint()) {
+        if (!this.isFastJson()) {
             return;
         }
 
@@ -267,7 +279,7 @@ public class FastJsonFingerprintType1 extends FastJsonFingerprintTypeAbstract {
         PrintWriter stdout = new PrintWriter(this.callbacks.getStdout(), true);
 
         stdout.println("");
-        stdout.println("===========FastJson指纹详情============");
+        stdout.println("===========FastJsonDnsLog模块详情============");
         stdout.println("你好呀~ (≧ω≦*)喵~");
         stdout.println("这边检测到有一个站点使用了 FastJson并且dns出网 喵~");
         stdout.println(String.format("负责检测的插件: %s", this.getExtensionName()));

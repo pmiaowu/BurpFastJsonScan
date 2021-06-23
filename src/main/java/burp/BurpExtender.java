@@ -9,13 +9,13 @@ import java.net.MalformedURLException;
 import burp.Bootstrap.DomainNameRepeat;
 import burp.Bootstrap.UrlRepeat;
 import burp.Bootstrap.BurpAnalyzedRequest;
-import burp.Application.FastJsonFingerprintDetection.FastJsonFingerprint;
+import burp.Application.FastJsonDnsLogDetection.FastJsonDnsLog;
 import burp.CustomErrorException.TaskTimeoutException;
 
 public class BurpExtender implements IBurpExtender, IScannerCheck {
 
     public static String NAME = "FastJsonScan";
-    public static String VERSION = "1.0.7";
+    public static String VERSION = "1.0.8";
 
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
@@ -85,8 +85,6 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
         // url重复检测-模块运行
         IRequestInfo analyzedIResponseInfo = this.helpers.analyzeRequest(baseRequestResponse.getRequest());
         String baseRequestMethod = analyzedIResponseInfo.getMethod();
-
-
         String newBaseUrl = this.urlRepeat.RemoveUrlParameterValue(baseHttpRequestUrl.toString());
 
         // url重复检查
@@ -109,50 +107,45 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
         );
 
         try {
-            // fastJson指纹检测-模块运行
-            FastJsonFingerprint fastJsonFingerprint = new FastJsonFingerprint(this.callbacks, baseAnalyzedRequest, "FastJsonFingerprintType1");
-            if (!fastJsonFingerprint.run().isRunExtension()) {
-                return null;
+            // FastJsonDnsLog检测-模块运行
+            FastJsonDnsLog fastJsonDnsLog = new FastJsonDnsLog(this.callbacks, baseAnalyzedRequest, "FastJsonDnsLogType1");
+            if (fastJsonDnsLog.run().isRunExtension()) {
+                // 检测是否使用了FastJson
+                if (fastJsonDnsLog.run().isFastJson()) {
+                    // 确定使用了FastJson 把该域名加入进HashMap里面防止下次重复扫描
+                    this.domainNameRepeat.add(baseRequestDomainName);
+
+                    // FastJsonDnsLog检测-报告输出
+                    issues.add(fastJsonDnsLog.run().export());
+
+                    // FastJsonDnsLog检测-控制台报告输出
+                    fastJsonDnsLog.run().consoleExport();
+
+                    // 检查出来使用了FastJson-更新任务状态至任务栏面板
+                    IHttpRequestResponse fastJsonDnsLogRequestResponse = fastJsonDnsLog.run().getHttpRequestResponse();
+                    byte[] fastJsonDnsLogResponse = fastJsonDnsLogRequestResponse.getResponse();
+                    this.tags.save(
+                            tagId,
+                            fastJsonDnsLog.run().getExtensionName(),
+                            this.helpers.analyzeRequest(fastJsonDnsLogRequestResponse).getMethod(),
+                            baseHttpRequestUrl.toString(),
+                            this.helpers.analyzeResponse(fastJsonDnsLogResponse).getStatusCode() + "",
+                            "[+] found fastJson",
+                            fastJsonDnsLogRequestResponse
+                    );
+                    return issues;
+                }
             }
 
-            // 检测是否使用了FastJson
-            if (!fastJsonFingerprint.run().isFastJsonFingerprint()) {
-                // 任务完成情况控制台输出
-                this.taskCompletionConsoleExport(baseRequestResponse);
-
-                // 未检测出来使用了FastJson-更新任务状态至任务栏面板
-                this.tags.save(
-                        tagId,
-                        fastJsonFingerprint.run().getExtensionName(),
-                        this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
-                        baseHttpRequestUrl.toString(),
-                        this.helpers.analyzeResponse(baseResponse).getStatusCode() + "",
-                        "[-] not found fastJson",
-                        baseRequestResponse
-                );
-                return issues;
-            }
-
-            // 确定使用了FastJson 把该域名加入进HashMap里面防止下次重复扫描
-            this.domainNameRepeat.add(baseRequestDomainName);
-
-            // FastJson指纹检测-报告输出
-            issues.add(fastJsonFingerprint.run().export());
-
-            // FastJson指纹检测-控制台报告输出
-            fastJsonFingerprint.run().consoleExport();
-
-            // 检查出来使用了FastJson-更新任务状态至任务栏面板
-            IHttpRequestResponse fastJsonFingerprintRequestResponse = fastJsonFingerprint.run().getHttpRequestResponse();
-            byte[] fastJsonFingerprintResponse = fastJsonFingerprintRequestResponse.getResponse();
+            // 未检测出来使用了FastJson-更新任务状态至任务栏面板
             this.tags.save(
                     tagId,
-                    fastJsonFingerprint.run().getExtensionName(),
-                    this.helpers.analyzeRequest(fastJsonFingerprintRequestResponse).getMethod(),
+                    "ALL",
+                    this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
                     baseHttpRequestUrl.toString(),
-                    this.helpers.analyzeResponse(fastJsonFingerprintResponse).getStatusCode() + "",
-                    "[+] found fastJson",
-                    fastJsonFingerprintRequestResponse
+                    this.helpers.analyzeResponse(baseResponse).getStatusCode() + "",
+                    "[-] not found fastJson",
+                    baseRequestResponse
             );
         } catch (TaskTimeoutException e) {
             this.urlRepeat.delMethodAndUrl(baseRequestMethod, newBaseUrl);
@@ -195,6 +188,8 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
                     baseRequestResponse
             );
         } finally {
+            this.taskCompletionConsoleExport(baseRequestResponse);
+
             // 输出跑到的问题给burp
             return issues;
         }
@@ -208,6 +203,7 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
         this.stdout.println("============FastJson-scan扫描完毕================");
         this.stdout.println(String.format("url: %s", httpRequestUrl));
         this.stdout.println("========================================");
+        this.stdout.println(" ");
     }
 
     @Override

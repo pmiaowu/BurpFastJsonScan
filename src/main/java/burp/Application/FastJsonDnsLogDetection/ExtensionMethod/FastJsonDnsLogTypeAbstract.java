@@ -1,17 +1,17 @@
-package burp.Application.FastJsonFingerprintDetection.ExtensionMethod;
+package burp.Application.FastJsonDnsLogDetection.ExtensionMethod;
 
 import burp.IHttpRequestResponse;
 
 /**
- * FastJson指纹扩展的抽象类
- * 所有的FastJson指纹检测的方法都要继承它并实现所有的接口
+ * FastJsonDnsLog扩展的抽象类
+ * 所有的FastJsonDnsLog检测的方法都要继承它并实现所有的接口
  */
-abstract class FastJsonFingerprintTypeAbstract implements FastJsonFingerprintTypeInterface {
+abstract class FastJsonDnsLogTypeAbstract implements FastJsonDnsLogTypeInterface {
     private String extensionName = "";
 
     private Boolean isRunExtension = false;
 
-    private Boolean isFastJsonFingerprint = false;
+    private Boolean isFastJson = false;
 
     private String requestIssueName = "";
     private String requestIssueValue = "";
@@ -24,7 +24,7 @@ abstract class FastJsonFingerprintTypeAbstract implements FastJsonFingerprintTyp
      */
     protected void setExtensionName(String value) {
         if (value == null || value.isEmpty()) {
-            throw new IllegalArgumentException("FastJson指纹扫描扩展-扩展名称不能为空");
+            throw new IllegalArgumentException("FastJsonDnsLog扫描扩展-扩展名称不能为空");
         }
         this.extensionName = value;
     }
@@ -35,7 +35,7 @@ abstract class FastJsonFingerprintTypeAbstract implements FastJsonFingerprintTyp
      */
     private void extensionNameCheck() {
         if (this.extensionName == null || this.extensionName.isEmpty()) {
-            throw new IllegalArgumentException("请为该FastJson指纹扫描扩展-设置扩展名称");
+            throw new IllegalArgumentException("请为该FastJsonDnsLog扫描扩展-设置扩展名称");
         }
     }
 
@@ -64,7 +64,7 @@ abstract class FastJsonFingerprintTypeAbstract implements FastJsonFingerprintTyp
      */
     private void registerExtensionCheck() {
         if (!this.isRunExtension) {
-            throw new IllegalArgumentException("注意: 该指纹模块未注册,无法使用");
+            throw new IllegalArgumentException("注意: 该模块未注册,无法使用");
         }
     }
 
@@ -80,11 +80,11 @@ abstract class FastJsonFingerprintTypeAbstract implements FastJsonFingerprintTyp
     }
 
     /**
-     * 设置为FastJson指纹
+     * 设置为FastJson
      */
-    protected void setFastJsonFingerprint() {
+    protected void setFastJson() {
         this.registerExtensionCheck();
-        this.isFastJsonFingerprint = true;
+        this.isFastJson = true;
     }
 
     /**
@@ -92,9 +92,9 @@ abstract class FastJsonFingerprintTypeAbstract implements FastJsonFingerprintTyp
      * @return Boolean
      */
     @Override
-    public Boolean isFastJsonFingerprint() {
+    public Boolean isFastJson() {
         this.registerExtensionCheck();
-        return this.isFastJsonFingerprint;
+        return this.isFastJson;
     }
 
     /**
