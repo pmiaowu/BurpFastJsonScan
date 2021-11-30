@@ -1,27 +1,26 @@
 package burp.DnsLogModule;
 
-import burp.IBurpExtenderCallbacks;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
-import burp.DnsLogModule.ExtensionMethod.*;
+import burp.IBurpExtenderCallbacks;
+import burp.DnsLogModule.ExtensionInterface.DnsLogInterface;
 
 public class DnsLog {
     private DnsLogInterface dnsLog;
 
-    public DnsLog(IBurpExtenderCallbacks callbacks, String callClassName) {
-        this.init(callbacks, callClassName);
-    }
-
-    private DnsLogInterface init(IBurpExtenderCallbacks callbacks, String callClassName) {
+    public DnsLog(IBurpExtenderCallbacks callbacks, String callClassName) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
         if (callClassName == null || callClassName.length() <= 0) {
             throw new IllegalArgumentException("DnsLog模块-请输入要调用的dnsLog插件");
         }
 
-        if (callClassName.equals("DnsLogCn")) {
-            this.dnsLog = new DnsLogCn(callbacks);
-            return this.dnsLog;
-        }
+        Class c = Class.forName("burp.DnsLogModule.ExtensionMethod." + callClassName);
+        Constructor cConstructor = c.getConstructor(IBurpExtenderCallbacks.class);
+        this.dnsLog = (DnsLogInterface) cConstructor.newInstance(callbacks);
 
-        throw new IllegalArgumentException(String.format("DnsLog模块-对不起您输入的 %s 扩展找不到", callClassName));
+        if (this.dnsLog.getExtensionName().isEmpty()) {
+            throw new IllegalArgumentException("请为该DnsLog扩展-设置扩展名称");
+        }
     }
 
     public DnsLogInterface run() {

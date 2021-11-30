@@ -5,15 +5,15 @@ public class TaskTimeoutException extends RuntimeException {
         super();
     }
 
-    public TaskTimeoutException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
     public TaskTimeoutException(String message) {
         super(message);
     }
 
     public TaskTimeoutException(Throwable cause) {
         super(cause);
+    }
+
+    public TaskTimeoutException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

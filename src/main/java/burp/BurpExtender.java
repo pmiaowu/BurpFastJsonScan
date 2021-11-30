@@ -1,209 +1,245 @@
 package burp;
 
-import java.net.URL;
 import java.util.List;
 import java.util.ArrayList;
 import java.io.PrintWriter;
-import java.net.MalformedURLException;
+import java.lang.reflect.InvocationTargetException;
 
-import burp.Bootstrap.DomainNameRepeat;
-import burp.Bootstrap.UrlRepeat;
+import burp.Application.CmdEchoExtension.CmdEcho;
+import burp.Ui.Tags;
+import burp.DnsLogModule.DnsLog;
+import burp.Bootstrap.YamlReader;
+import burp.Bootstrap.CustomBurpUrl;
 import burp.Bootstrap.BurpAnalyzedRequest;
-import burp.Application.FastJsonDnsLogDetection.FastJsonDnsLog;
 import burp.CustomErrorException.TaskTimeoutException;
+import burp.Application.RemoteCmdExtension.RemoteCmd;
 
 public class BurpExtender implements IBurpExtender, IScannerCheck {
-
     public static String NAME = "FastJsonScan";
-    public static String VERSION = "1.0.8";
+    public static String VERSION = "2.0.0";
 
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
+
     private PrintWriter stdout;
+    private PrintWriter stderr;
+
     private Tags tags;
 
-    private DomainNameRepeat domainNameRepeat;
-    private UrlRepeat urlRepeat;
+    private YamlReader yamlReader;
 
     @Override
     public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
         this.callbacks = callbacks;
         this.helpers = callbacks.getHelpers();
-        this.stdout = new PrintWriter(callbacks.getStdout(), true);
 
-        this.domainNameRepeat = new DomainNameRepeat();
-        this.urlRepeat = new UrlRepeat();
+        this.stdout = new PrintWriter(callbacks.getStdout(), true);
+        this.stderr = new PrintWriter(callbacks.getStderr(), true);
 
         // 标签界面
         this.tags = new Tags(callbacks, NAME);
 
+        // 配置文件
+        this.yamlReader = YamlReader.getInstance(callbacks);
+
         callbacks.setExtensionName(NAME);
         callbacks.registerScannerCheck(this);
 
-        this.stdout.println("===================================");
-        this.stdout.println(String.format("%s 加载成功", NAME));
-        this.stdout.println(String.format("版本: %s", VERSION));
-        this.stdout.println("作者: P喵呜-PHPoop");
-        this.stdout.println("QQ: 3303003493");
-        this.stdout.println("微信: a3303003493");
-        this.stdout.println("GitHub: https://github.com/pmiaowu");
-        this.stdout.println("Blog: https://www.yuque.com/pmiaowu");
-        this.stdout.println("===================================");
+        // 基本信息输出
+        // 作者拿来臭美用的 ╰(*°▽°*)╯
+        this.stdout.println(basicInformationOutput());
+    }
+
+    /**
+     * 基本信息输出
+     */
+    private static String basicInformationOutput() {
+        String str1 = "===================================\n";
+        String str2 = String.format("%s 加载成功\n", NAME);
+        String str3 = String.format("版本: %s\n", VERSION);
+        String str4 = "作者: P喵呜-PHPoop\n";
+        String str5 = "QQ: 3303003493\n";
+        String str6 = "微信: a3303003493\n";
+        String str7 = "GitHub: https://github.com/pmiaowu\n";
+        String str8 = "Blog: https://www.yuque.com/pmiaowu\n";
+        String str9 = String.format("下载地址: %s\n", "https://github.com/pmiaowu/BurpFastJsonScan");
+        String str10 = "===================================\n";
+        String detail = str1 + str2 + str3 + str4 + str5 + str6 + str7 + str8 + str9 + str10;
+        return detail;
     }
 
     @Override
     public List<IScanIssue> doPassiveScan(IHttpRequestResponse baseRequestResponse) {
-        List<IScanIssue> issues = new ArrayList<IScanIssue>();
+        List<IScanIssue> issues = new ArrayList<>();
 
-        // 基础请求域名构造
-        String baseRequestProtocol = baseRequestResponse.getHttpService().getProtocol();
-        String baseRequestHost = baseRequestResponse.getHttpService().getHost();
-        int baseRequestPort = baseRequestResponse.getHttpService().getPort();
-        String baseRequestPath = this.helpers.analyzeRequest(baseRequestResponse).getUrl().getPath();
+        // 基础url解析
+        CustomBurpUrl baseBurpUrl = new CustomBurpUrl(this.callbacks, baseRequestResponse);
 
-        String baseRequestDomainName = baseRequestProtocol + "://" + baseRequestHost + ":" + baseRequestPort;
+        // 基础请求分析
+        BurpAnalyzedRequest baseAnalyzedRequest = new BurpAnalyzedRequest(this.callbacks, this.tags, baseRequestResponse);
 
-        URL baseHttpRequestUrl = null;
-        try {
-            baseHttpRequestUrl = new URL(baseRequestDomainName + "/" + baseRequestPath);
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
+        // 消息等级-用于插件扫描队列界面的显示
+        String messageLevel = this.yamlReader.getString("messageLevel");
+
+        // 判断是否开启插件
+        if (!this.tags.getBaseSettingTagClass().isStart()) {
+            return null;
         }
 
-        // 判断是否有json，没有就不执行
-        BurpAnalyzedRequest baseAnalyzedRequest = new BurpAnalyzedRequest(this.callbacks, baseRequestResponse);
+        // 判断是否有允许扫描的JSON类型
+        if (this.tags.getBaseSettingTagClass().getScanTypeList().size() == 0) {
+            return null;
+        }
 
+        // 判断当前请求是否有json
         if (!baseAnalyzedRequest.isRequestParameterContentJson()) {
-            return issues;
-        }
-
-        // 域名重复检查
-        if (this.domainNameRepeat.check(baseRequestDomainName)) {
+            if (messageLevel.equals("ALL")) {
+                this.tags.getScanQueueTagClass().add(
+                        "",
+                        this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
+                        baseBurpUrl.getHttpRequestUrl().toString(),
+                        this.helpers.analyzeResponse(baseRequestResponse.getResponse()).getStatusCode() + "",
+                        "request no json",
+                        baseRequestResponse
+                );
+            }
             return null;
         }
 
-        // url重复检测-模块运行
-        IRequestInfo analyzedIResponseInfo = this.helpers.analyzeRequest(baseRequestResponse.getRequest());
-        String baseRequestMethod = analyzedIResponseInfo.getMethod();
-        String newBaseUrl = this.urlRepeat.RemoveUrlParameterValue(baseHttpRequestUrl.toString());
-
-        // url重复检查
-        if (this.urlRepeat.check(baseRequestMethod, newBaseUrl)) {
+        // 判断当前请求是否有符合条件的json
+        if (!baseAnalyzedRequest.isSiteEligibleJson()) {
+            if (messageLevel.equals("ALL")) {
+                this.tags.getScanQueueTagClass().add(
+                        "",
+                        this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
+                        baseBurpUrl.getHttpRequestUrl().toString(),
+                        this.helpers.analyzeResponse(baseRequestResponse.getResponse()).getStatusCode() + "",
+                        "request json no eligible",
+                        baseRequestResponse
+                );
+            }
             return null;
         }
 
-        // 确定以前没有执行过 把该url加入进数组里面防止下次重复扫描
-        this.urlRepeat.addMethodAndUrl(baseRequestMethod, newBaseUrl);
+        // 判断当前站点问题数量是否超出了
+        Integer issueNumber = this.yamlReader.getInteger("scan.issueNumber");
+        if (issueNumber != 0) {
+            Integer siteIssueNumber = this.getSiteIssueNumber(baseBurpUrl.getRequestDomainName());
+            if (siteIssueNumber >= issueNumber) {
+                if (messageLevel.equals("ALL") || messageLevel.equals("INFO")) {
+                    this.tags.getScanQueueTagClass().add(
+                            "",
+                            this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
+                            baseBurpUrl.getHttpRequestUrl().toString(),
+                            this.helpers.analyzeResponse(baseRequestResponse.getResponse()).getStatusCode() + "",
+                            "the number of website problems has exceeded",
+                            baseRequestResponse
+                    );
+                }
+                return null;
+            }
+        }
+
+        // 判断当前站点是否超出扫描数量了
+        Integer siteScanNumber = this.yamlReader.getInteger("scan.siteScanNumber");
+        if (siteScanNumber != 0) {
+            Integer siteJsonNumber = this.getSiteJsonNumber(baseBurpUrl.getRequestDomainName());
+            if (siteJsonNumber >= siteScanNumber) {
+                if (messageLevel.equals("ALL") || messageLevel.equals("INFO")) {
+                    this.tags.getScanQueueTagClass().add(
+                            "",
+                            this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
+                            baseBurpUrl.getHttpRequestUrl().toString(),
+                            this.helpers.analyzeResponse(baseRequestResponse.getResponse()).getStatusCode() + "",
+                            "the number of website scans exceeded",
+                            baseRequestResponse
+                    );
+                }
+                return null;
+            }
+        }
 
         // 添加任务到面板中等待检测
-        byte[] baseResponse = baseRequestResponse.getResponse();
-        int tagId = this.tags.add(
+        int tagId = this.tags.getScanQueueTagClass().add(
                 "",
                 this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
-                baseHttpRequestUrl.toString(),
-                this.helpers.analyzeResponse(baseResponse).getStatusCode() + "",
+                baseBurpUrl.getHttpRequestUrl().toString(),
+                this.helpers.analyzeResponse(baseRequestResponse.getResponse()).getStatusCode() + "",
                 "waiting for test results",
                 baseRequestResponse
         );
 
         try {
-            // FastJsonDnsLog检测-模块运行
-            FastJsonDnsLog fastJsonDnsLog = new FastJsonDnsLog(this.callbacks, baseAnalyzedRequest, "FastJsonDnsLogType1");
-            if (fastJsonDnsLog.run().isRunExtension()) {
-                // 检测是否使用了FastJson
-                if (fastJsonDnsLog.run().isFastJson()) {
-                    // 确定使用了FastJson 把该域名加入进HashMap里面防止下次重复扫描
-                    this.domainNameRepeat.add(baseRequestDomainName);
-
-                    // FastJsonDnsLog检测-报告输出
-                    issues.add(fastJsonDnsLog.run().export());
-
-                    // FastJsonDnsLog检测-控制台报告输出
-                    fastJsonDnsLog.run().consoleExport();
-
-                    // 检查出来使用了FastJson-更新任务状态至任务栏面板
-                    IHttpRequestResponse fastJsonDnsLogRequestResponse = fastJsonDnsLog.run().getHttpRequestResponse();
-                    byte[] fastJsonDnsLogResponse = fastJsonDnsLogRequestResponse.getResponse();
-                    this.tags.save(
-                            tagId,
-                            fastJsonDnsLog.run().getExtensionName(),
-                            this.helpers.analyzeRequest(fastJsonDnsLogRequestResponse).getMethod(),
-                            baseHttpRequestUrl.toString(),
-                            this.helpers.analyzeResponse(fastJsonDnsLogResponse).getStatusCode() + "",
-                            "[+] found fastJson",
-                            fastJsonDnsLogRequestResponse
-                    );
-                    return issues;
-                }
+            // cmd回显扩展
+            IScanIssue cmdEchoIssuesDetail = this.cmdEchoExtension(tagId, baseAnalyzedRequest);
+            if (cmdEchoIssuesDetail != null) {
+                issues.add(cmdEchoIssuesDetail);
+                return issues;
             }
 
-            // 未检测出来使用了FastJson-更新任务状态至任务栏面板
-            this.tags.save(
+            // 远程cmd扩展
+            IScanIssue remoteCmdIssuesDetail = this.remoteCmdExtension(tagId, baseAnalyzedRequest);
+            if (remoteCmdIssuesDetail != null) {
+                issues.add(remoteCmdIssuesDetail);
+                return issues;
+            }
+
+            // 未检测出来问题, 更新任务状态至任务栏面板
+            this.tags.getScanQueueTagClass().save(
                     tagId,
                     "ALL",
                     this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
-                    baseHttpRequestUrl.toString(),
-                    this.helpers.analyzeResponse(baseResponse).getStatusCode() + "",
-                    "[-] not found fastJson",
+                    baseBurpUrl.getHttpRequestUrl().toString(),
+                    this.helpers.analyzeResponse(baseRequestResponse.getResponse()).getStatusCode() + "",
+                    "[-] not found fastJson command execution",
                     baseRequestResponse
             );
         } catch (TaskTimeoutException e) {
-            this.urlRepeat.delMethodAndUrl(baseRequestMethod, newBaseUrl);
-            this.domainNameRepeat.del(baseRequestDomainName);
-
-            // 通知控制台报错
-            this.stdout.println("========FastJson插件错误-程序运行超时============");
-            this.stdout.println(String.format("url: %s", baseHttpRequestUrl));
+            this.stdout.println("========插件错误-超时错误============");
+            this.stdout.println(String.format("url: %s", baseBurpUrl.getHttpRequestUrl().toString()));
             this.stdout.println("请使用该url重新访问,若是还多次出现此错误,则很有可能waf拦截");
+            this.stdout.println("错误详情请查看Extender里面对应插件的Errors标签页");
             this.stdout.println("========================================");
+            this.stdout.println(" ");
 
-            // 本次任务执行有问题-更新任务状态至任务栏面板
-            this.tags.save(
+            this.tags.getScanQueueTagClass().save(
                     tagId,
                     "",
                     this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
-                    baseHttpRequestUrl.toString(),
-                    this.helpers.analyzeResponse(baseResponse).getStatusCode() + "",
-                    "fastJson scan task timeout",
+                    baseBurpUrl.getHttpRequestUrl().toString(),
+                    this.helpers.analyzeResponse(baseRequestResponse.getResponse()).getStatusCode() + "",
+                    "[x] scan task timed out",
                     baseRequestResponse
             );
+
+            e.printStackTrace(this.stderr);
         } catch (Exception e) {
-            this.urlRepeat.delMethodAndUrl(baseRequestMethod, newBaseUrl);
-            this.domainNameRepeat.del(baseRequestDomainName);
-
-            // 通知控制台报错
-            this.stdout.println("========FastJson插件错误-未知错误============");
-            this.stdout.println(String.format("url: %s", baseHttpRequestUrl));
+            this.stderr.println("========插件错误-未知错误============");
+            this.stdout.println(String.format("url: %s", baseBurpUrl.getHttpRequestUrl().toString()));
             this.stdout.println("请使用该url重新访问,若是还多次出现此错误,则很有可能waf拦截");
+            this.stdout.println("错误详情请查看Extender里面对应插件的Errors标签页");
             this.stdout.println("========================================");
+            this.stdout.println(" ");
 
-            // 本次任务执行有问题-更新任务状态至任务栏面板
-            this.tags.save(
+            this.tags.getScanQueueTagClass().save(
                     tagId,
                     "",
                     this.helpers.analyzeRequest(baseRequestResponse).getMethod(),
-                    baseHttpRequestUrl.toString(),
-                    this.helpers.analyzeResponse(baseResponse).getStatusCode() + "",
-                    "fastJson scan unknown error",
+                    baseBurpUrl.getHttpRequestUrl().toString(),
+                    this.helpers.analyzeResponse(baseRequestResponse.getResponse()).getStatusCode() + "",
+                    "[x] unknown error",
                     baseRequestResponse
             );
-        } finally {
-            this.taskCompletionConsoleExport(baseRequestResponse);
 
-            // 输出跑到的问题给burp
+            e.printStackTrace(this.stderr);
+        } finally {
+            this.stdout.println("================扫描完毕================");
+            this.stdout.println(String.format("url: %s", baseBurpUrl.getHttpRequestUrl().toString()));
+            this.stdout.println("========================================");
+            this.stdout.println(" ");
+
             return issues;
         }
-    }
-
-    /**
-     * 任务完成情况控制台输出
-     */
-    private void taskCompletionConsoleExport(IHttpRequestResponse requestResponse) {
-        URL httpRequestUrl = this.helpers.analyzeRequest(requestResponse).getUrl();
-        this.stdout.println("============FastJson-scan扫描完毕================");
-        this.stdout.println(String.format("url: %s", httpRequestUrl));
-        this.stdout.println("========================================");
-        this.stdout.println(" ");
     }
 
     @Override
@@ -213,10 +249,125 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
 
     @Override
     public int consolidateDuplicateIssues(IScanIssue existingIssue, IScanIssue newIssue) {
-        if (existingIssue.getIssueName().equals(newIssue.getIssueName())) {
-            return -1;
-        } else {
-            return 0;
+        return 0;
+    }
+
+    /**
+     * 命令回显扩展
+     *
+     * @param tagId
+     * @param analyzedRequest
+     * @return IScanIssue issues
+     * @throws ClassNotFoundException
+     * @throws NoSuchMethodException
+     * @throws InvocationTargetException
+     * @throws InstantiationException
+     * @throws IllegalAccessException
+     */
+    private IScanIssue cmdEchoExtension(int tagId, BurpAnalyzedRequest analyzedRequest) throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        String provider = this.yamlReader.getString("application.cmdEchoExtension.config.provider");
+
+        if (!this.tags.getBaseSettingTagClass().isStartCmdEchoExtension()) {
+            return null;
         }
+
+        CmdEcho cmdEcho = new CmdEcho(this.callbacks, analyzedRequest, this.yamlReader, provider);
+        if (!cmdEcho.run().isIssue()) {
+            return null;
+        }
+
+        IHttpRequestResponse httpRequestResponse = cmdEcho.run().getHttpRequestResponse();
+
+        this.tags.getScanQueueTagClass().save(
+                tagId,
+                cmdEcho.run().getExtensionName(),
+                this.helpers.analyzeRequest(httpRequestResponse).getMethod(),
+                new CustomBurpUrl(this.callbacks, httpRequestResponse).getHttpRequestUrl().toString(),
+                this.helpers.analyzeResponse(httpRequestResponse.getResponse()).getStatusCode() + "",
+                "[+] found fastJson command execution",
+                cmdEcho.run().getHttpRequestResponse()
+        );
+
+        cmdEcho.run().consoleExport();
+        return cmdEcho.run().export();
+    }
+
+    /**
+     * 远程cmd扩展
+     *
+     * @param tagId
+     * @param analyzedRequest
+     * @return IScanIssue issues
+     * @throws ClassNotFoundException
+     * @throws NoSuchMethodException
+     * @throws InvocationTargetException
+     * @throws InstantiationException
+     * @throws IllegalAccessException
+     */
+    private IScanIssue remoteCmdExtension(int tagId, BurpAnalyzedRequest analyzedRequest) throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        String provider = this.yamlReader.getString("application.remoteCmdExtension.config.provider");
+
+        if (!this.tags.getBaseSettingTagClass().isStartRemoteCmdExtension()) {
+            return null;
+        }
+
+        DnsLog dnsLog = new DnsLog(this.callbacks, this.yamlReader.getString("dnsLogModule.provider"));
+        RemoteCmd remoteCmd = new RemoteCmd(this.callbacks, analyzedRequest, dnsLog, this.yamlReader, provider);
+        if (!remoteCmd.run().isIssue()) {
+            return null;
+        }
+
+        IHttpRequestResponse httpRequestResponse = remoteCmd.run().getHttpRequestResponse();
+
+        this.tags.getScanQueueTagClass().save(
+                tagId,
+                remoteCmd.run().getExtensionName(),
+                this.helpers.analyzeRequest(httpRequestResponse).getMethod(),
+                new CustomBurpUrl(this.callbacks, httpRequestResponse).getHttpRequestUrl().toString(),
+                this.helpers.analyzeResponse(httpRequestResponse.getResponse()).getStatusCode() + "",
+                "[+] found fastJson command execution",
+                remoteCmd.run().getHttpRequestResponse()
+        );
+
+        remoteCmd.run().consoleExport();
+        return remoteCmd.run().export();
+    }
+
+    /**
+     * 网站问题数量
+     *
+     * @param domainName
+     * @return
+     */
+    private Integer getSiteIssueNumber(String domainName) {
+        Integer number = 0;
+
+        String issueName = this.yamlReader.getString("application.cmdEchoExtension.config.issueName");
+        String issueName2 = this.yamlReader.getString("application.remoteCmdExtension.config.issueName");
+
+        for (IScanIssue Issue : this.callbacks.getScanIssues(domainName)) {
+            if (Issue.getIssueName().equals(issueName) || Issue.getIssueName().equals(issueName2)) {
+                number++;
+            }
+        }
+
+        return number;
+    }
+
+    /**
+     * 站点JSON出现数量
+     *
+     * @param domainName
+     * @return
+     */
+    private Integer getSiteJsonNumber(String domainName) {
+        Integer number = 0;
+        for (IHttpRequestResponse requestResponse : this.callbacks.getSiteMap(domainName)) {
+            BurpAnalyzedRequest analyzedRequest = new BurpAnalyzedRequest(this.callbacks, this.tags, requestResponse);
+            if (analyzedRequest.isRequestParameterContentJson()) {
+                number++;
+            }
+        }
+        return number;
     }
 }
