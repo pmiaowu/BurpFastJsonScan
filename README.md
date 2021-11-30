@@ -104,6 +104,7 @@ json的这种就是请求包的内容直接就是json不带参数的那种, 也�
 
 # tag界面查看漏洞情况
 
+```
 现在可以通过tag界面查看漏洞情况了
 
 分别会返回
@@ -112,12 +113,13 @@ json的这种就是请求包的内容直接就是json不带参数的那种, 也�
 - the number of website problems has exceeded = exceeded 超出网站问题的数量
 - the number of website scans exceeded = 超出网站可扫描次数
 - waiting for test results = 等待测试结果
-- \[+\] found fastJson command execution = 查找到fastJson命令执行
-- \[-\] not found fastJson command execution = 没有查找到fastJson命令执行
-- \[x\] scan task timed out = 扫描任务超时
-- \[x\] unknown error = 未知的错误
+- [+] found fastJson command execution = 查找到fastJson命令执行
+- [-] not found fastJson command execution = 没有查找到fastJson命令执行
+- [x] scan task timed out = 扫描任务超时
+- [x] unknown error = 未知的错误
 
 当发生 unknown error 的时候,可以尝试在下方中查看错误详情
+```
 
 ![](./images/7.png)
 
