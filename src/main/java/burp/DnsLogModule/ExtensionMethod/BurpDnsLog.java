@@ -18,6 +18,8 @@ public class BurpDnsLog extends DnsLogAbstract {
 
     private IBurpCollaboratorClientContext burpCollaboratorClientContext;
 
+    private String dnslogContent = null;
+
     public BurpDnsLog(IBurpExtenderCallbacks callbacks) {
         this.callbacks = callbacks;
         this.helpers = callbacks.getHelpers();
@@ -50,21 +52,21 @@ public class BurpDnsLog extends DnsLogAbstract {
 
             Map<String, String> properties = iterator.next().getProperties();
             if (properties.size() == 0) {
-                return null;
+                return this.dnslogContent;
             }
 
             String content = null;
             for (String property : properties.keySet()) {
                 String text = properties.get(property);
                 if (property.equals("raw_query")) {
-                    text = Arrays.toString(this.helpers.base64Decode(text));
+                    text = new String(this.helpers.base64Decode(text));
                 }
-
                 content += text + " ";
             }
-            return content;
+            this.dnslogContent += content;
+            return this.dnslogContent;
         }
-        return null;
+        return this.dnslogContent;
     }
 
     @Override

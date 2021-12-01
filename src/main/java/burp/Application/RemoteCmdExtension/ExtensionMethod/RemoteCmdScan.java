@@ -33,6 +33,7 @@ public class RemoteCmdScan extends AAppExtension {
 
     private String sendDnsLogUrl;
 
+    private ArrayList<String> keyArrayList = new ArrayList<>();
     private ArrayList<String> dnsLogUrlArrayList = new ArrayList<>();
     private ArrayList<IHttpRequestResponse> httpRequestResponseArrayList = new ArrayList<>();
 
@@ -103,10 +104,10 @@ public class RemoteCmdScan extends AAppExtension {
         }
 
         // 这里进行二次判断
-        for (int i = 0; i < this.dnsLogUrlArrayList.size(); i++) {
+        for (int i = 0; i < this.keyArrayList.size(); i++) {
             // dnslog 内容匹配判断
-            if (!dnsLogBodyContent.contains(this.dnsLogUrlArrayList.get(i))) {
-                if ((i + 1) != this.dnsLogUrlArrayList.size()) {
+            if (!dnsLogBodyContent.contains(this.keyArrayList.get(i))) {
+                if ((i + 1) != this.keyArrayList.size()) {
                     continue;
                 } else {
                     return;
@@ -120,12 +121,14 @@ public class RemoteCmdScan extends AAppExtension {
     }
 
     private void remoteCmdDetection(String payload) {
-        String dnsLogUrl = CustomHelpers.randomStr(8) + "." + this.dnsLog.run().getTemporaryDomainName();
+        String key = CustomHelpers.randomStr(15);
+        String dnsLogUrl = key + "." + this.dnsLog.run().getTemporaryDomainName();
 
         // 发送请求
         IHttpRequestResponse newHttpRequestResponse = analyzedRequest.makeHttpRequest(payload.replace("dnslog-url", dnsLogUrl), null);
 
         // 相关变量设置
+        this.keyArrayList.add(key);
         this.dnsLogUrlArrayList.add(dnsLogUrl);
         this.httpRequestResponseArrayList.add(newHttpRequestResponse);
 
@@ -136,7 +139,7 @@ public class RemoteCmdScan extends AAppExtension {
         }
 
         // dnslog 内容匹配判断
-        if (!dnsLogBodyContent.contains(dnsLogUrl)) {
+        if (!dnsLogBodyContent.contains(key)) {
             return;
         }
 
