@@ -211,7 +211,7 @@ public class CmdEchoScan extends AAppExtension {
         stdout.println("");
         stdout.println("===========CmdEchoExtension详情============");
         stdout.println("你好呀~ (≧ω≦*)喵~");
-        stdout.println("这边检测到有一个站点有命令执行出网 喵~");
+        stdout.println("这边检测到有一个站点有命令执行 喵~");
         stdout.println(String.format("负责检测的插件: %s", this.getExtensionName()));
         stdout.println(String.format("url: %s", newHttpRequestUrl));
         stdout.println(String.format("命令输入点: %s", this.getCommandInputPoint()));
