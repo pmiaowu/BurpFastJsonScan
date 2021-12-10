@@ -87,5 +87,14 @@ application:
 dnsLogModule:
   # 提供商
   # 声明使用 DnsLogModule.ExtensionMethod 的哪个类,为该扩展提供服务
-  # 目前集成方法: DnsLogCn = http://dnslog.cn 的接口, BurpDnsLog = burp自带的dnslog接口
+  # 目前集成方法:
+  # DnsLogCn = http://dnslog.cn的接口
+  # BurpDnsLog = burp自带的dnslog接口
+  # Ceye = http://ceye.io的接口
   provider: "DnsLogCn"
+  # 其它数据,用于一些需要验证接口取值使用的
+  # 注意: key=value;为一个参数
+  # 例如:
+  # a=1; b=2; c=3;
+  # Ceye的配置等于: token=xxx;Identifier=xxxx.ceye.io;
+  other: "token=;Identifier=xxx.ceye.io;"
