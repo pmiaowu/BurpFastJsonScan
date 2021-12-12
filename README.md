@@ -156,3 +156,23 @@ json的这种就是请求包的内容直接就是json不带参数的那种, 也�
 
 解决方案:
 ![](./images/11.png)
+
+# 如何切换dnslog的问题
+
+编译完毕以后,进入BurpFastJsonScan文件夹,进入resources目录,打开config.yml
+
+如下:
+![](./images/12.png)
+
+![](./images/13.png)
+
+如果是想换成 DnsLogCn/BurpDnsLog 的话,只需要替换 provider这个值为对应的即可
+
+如果想使用Ceye,那就需要如下操作:
+
+![](./images/14.png)
+
+获取token与Identifier
+
+然后打开config.yml,填写成如下样子,如何重新安装插件即可:
+![](./images/15.png)
