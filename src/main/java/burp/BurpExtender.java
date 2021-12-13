@@ -214,7 +214,7 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
 
             e.printStackTrace(this.stderr);
         } catch (Exception e) {
-            this.stderr.println("========插件错误-未知错误============");
+            this.stdout.println("========插件错误-未知错误============");
             this.stdout.println(String.format("url: %s", baseBurpUrl.getHttpRequestUrl().toString()));
             this.stdout.println("请使用该url重新访问,若是还多次出现此错误,则很有可能waf拦截");
             this.stdout.println("错误详情请查看Extender里面对应插件的Errors标签页");
