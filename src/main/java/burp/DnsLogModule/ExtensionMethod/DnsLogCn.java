@@ -87,8 +87,8 @@ public class DnsLogCn extends DnsLogAbstract {
         request.header("User-Agent", userAgent);
         request.header("Accept", "*/*");
         request.header("Cookie", this.dnsLogCookieName + "=" + this.dnsLogCookieValue + ";");
-        request.readTimeout(3 * 1000);
-        request.connectTimeout(3 * 1000);
+        request.readTimeout(30 * 1000);
+        request.connectTimeout(30 * 1000);
 
         String body = request.body();
         if (body.equals("[]")) {
