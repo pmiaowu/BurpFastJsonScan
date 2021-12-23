@@ -62,6 +62,18 @@ public class Ceye extends DnsLogAbstract {
         request.connectTimeout(30 * 1000);
 
         String body = request.body();
+
+        if (!request.ok()) {
+            throw new RuntimeException(
+                    String.format(
+                            "%s 扩展-%s内容有异常,异常内容: %s",
+                            this.getExtensionName(),
+                            this.dnslogDomainName,
+                            body
+                    )
+            );
+        }
+
         if (body.contains("[]")) {
             return null;
         }
