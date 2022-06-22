@@ -36,8 +36,8 @@ public class DnsLogCn extends DnsLogAbstract {
         request.followRedirects(false);
         request.header("User-Agent", userAgent);
         request.header("Accept", "*/*");
-        request.readTimeout(3 * 1000);
-        request.connectTimeout(3 * 1000);
+        request.readTimeout(30 * 1000);
+        request.connectTimeout(30 * 1000);
 
         int statusCode = request.code();
         if (statusCode != 200) {
