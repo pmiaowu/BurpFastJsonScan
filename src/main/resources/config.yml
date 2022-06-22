@@ -20,6 +20,35 @@ scan:
   # 超过次数以后就不在对该站点进行扫描了
   # 0 表示无限次扫描
   siteScanNumber: 0
+  # 域名扫描规则
+  domainName:
+    # 域名黑名单
+    # 注: 黑名单优先级最高
+    # 注: 为空表示关闭该功能
+    # 使用规则:
+    # 1. 过滤某个域名: www.domain1.com
+    # 2. 过滤某个域名的全部子域名: *.domain2.com
+    # 3. 过滤某个域名的部分子域名: a.*.domain2.com/*.a.*.domain2.com
+    # 使用方法:
+    # blacklist:
+    #   - "www.domain1.com"
+    #   - "*.domain2.com"
+    blacklist:
+      - "*.dnslog.cn"
+      - "*.ceye.io"
+      - "*.fofa.so"
+    # 域名白名单
+    # 注: 黑名单优先级最高
+    # 注: 为空表示关闭该功能
+    # 使用规则:
+    # 1. 只扫描某个域名: www.domain1.com
+    # 2. 只扫描某个域名的全部子域名: *.domain2.com
+    # 3. 只扫描某个域名的部分子域名: a.*.domain2.com/*.a.*.domain2.com
+    # 使用方法:
+    # whitelist:
+    #   - "www.domain1.com"
+    #   - "*.domain2.com"
+    whitelist:
   # 扫描类型
   type:
     # 用于判断是否将 Get参数的Json 作为扫描参数
@@ -32,6 +61,120 @@ scan:
     isScanJson: true
     # 用于判断是否将 HTTP请求正文的Json 作为扫描参数
     isScanBodyJson: true
+
+# url黑名单后缀
+# url的后缀出现这些字段的都不进行测试
+urlBlackListSuffix:
+  config:
+    isStart: true
+  suffixList:
+    - "3g2"
+    - "3gp"
+    - "7z"
+    - "aac"
+    - "abw"
+    - "aif"
+    - "aifc"
+    - "aiff"
+    - "arc"
+    - "au"
+    - "avi"
+    - "azw"
+    - "bin"
+    - "bmp"
+    - "bz"
+    - "bz2"
+    - "cmx"
+    - "cod"
+    - "csh"
+    - "css"
+    - "csv"
+    - "doc"
+    - "docx"
+    - "eot"
+    - "epub"
+    - "gif"
+    - "gz"
+    - "ico"
+    - "ics"
+    - "ief"
+    - "jar"
+    - "jfif"
+    - "jpe"
+    - "jpeg"
+    - "jpg"
+    - "m3u"
+    - "mid"
+    - "midi"
+    - "mjs"
+    - "mp2"
+    - "mp3"
+    - "mpa"
+    - "mpe"
+    - "mpeg"
+    - "mpg"
+    - "mpkg"
+    - "mpp"
+    - "mpv2"
+    - "odp"
+    - "ods"
+    - "odt"
+    - "oga"
+    - "ogv"
+    - "ogx"
+    - "otf"
+    - "pbm"
+    - "pdf"
+    - "pgm"
+    - "png"
+    - "pnm"
+    - "ppm"
+    - "ppt"
+    - "pptx"
+    - "ra"
+    - "ram"
+    - "rar"
+    - "ras"
+    - "rgb"
+    - "rmi"
+    - "rtf"
+    - "snd"
+    - "svg"
+    - "swf"
+    - "tar"
+    - "tif"
+    - "tiff"
+    - "ttf"
+    - "vsd"
+    - "wav"
+    - "weba"
+    - "webm"
+    - "webp"
+    - "woff"
+    - "woff2"
+    - "xbm"
+    - "xls"
+    - "xlsx"
+    - "xpm"
+    - "xul"
+    - "xwd"
+    - "zip"
+    - "js"
+    - "wmv"
+    - "asf"
+    - "asx"
+    - "rm"
+    - "rmvb"
+    - "mp4"
+    - "mov"
+    - "m4v"
+    - "dat"
+    - "mkv"
+    - "flv"
+    - "vob"
+    - "txt"
+    - "php"
+    - "asp"
 
 # 应用程序配置
 application:

@@ -8,15 +8,14 @@ import java.io.PrintWriter;
 
 import burp.*;
 
-import burp.Bootstrap.CustomBurpHelpers;
-import burp.Bootstrap.YamlReader;
-import burp.Bootstrap.CustomHelpers;
-import burp.Bootstrap.BurpAnalyzedRequest;
+import burp.Bootstrap.*;
 import burp.Application.ExtensionInterface.AAppExtension;
 
 import burp.CustomErrorException.TaskTimeoutException;
 
 public class CmdEchoScan extends AAppExtension {
+    private GlobalVariableReader globalVariableReader;
+
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
 
@@ -34,9 +33,12 @@ public class CmdEchoScan extends AAppExtension {
     // 命令输出点
     private String commandOutputPoint;
 
-    public CmdEchoScan(IBurpExtenderCallbacks callbacks, BurpAnalyzedRequest analyzedRequest,
+    public CmdEchoScan(GlobalVariableReader globalVariableReader,
+                       IBurpExtenderCallbacks callbacks, BurpAnalyzedRequest analyzedRequest,
                        YamlReader yamlReader, List<String> payloads,
                        Date startDate, Integer maxExecutionTime) {
+        this.globalVariableReader = globalVariableReader;
+
         this.callbacks = callbacks;
         this.helpers = callbacks.getHelpers();
 
@@ -57,6 +59,11 @@ public class CmdEchoScan extends AAppExtension {
 
     private void runExtension() {
         for (String payload : this.payloads) {
+            // 这个参数为true说明插件已经被卸载,退出所有任务,避免继续扫描
+            if (this.globalVariableReader.getBooleanData("isExtensionUnload")) {
+                return;
+            }
+
             if (this.isIssue()) {
                 return;
             }

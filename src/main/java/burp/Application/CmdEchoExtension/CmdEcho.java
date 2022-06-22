@@ -5,6 +5,7 @@ import java.util.List;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
+import burp.Bootstrap.GlobalVariableReader;
 import burp.IBurpExtenderCallbacks;
 
 import burp.Bootstrap.YamlReader;
@@ -12,6 +13,8 @@ import burp.Bootstrap.BurpAnalyzedRequest;
 import burp.Application.ExtensionInterface.IAppExtension;
 
 public class CmdEcho {
+    private GlobalVariableReader globalVariableReader;
+
     private IBurpExtenderCallbacks callbacks;
 
     private BurpAnalyzedRequest analyzedRequest;
@@ -24,10 +27,13 @@ public class CmdEcho {
     private Date startDate = new Date();
 
     public CmdEcho(
+            GlobalVariableReader globalVariableReader,
             IBurpExtenderCallbacks callbacks,
             BurpAnalyzedRequest analyzedRequest,
             YamlReader yamlReader,
             String callClassName) throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        this.globalVariableReader = globalVariableReader;
+
         this.callbacks = callbacks;
         this.analyzedRequest = analyzedRequest;
 
@@ -47,6 +53,7 @@ public class CmdEcho {
 
         Class c = Class.forName("burp.Application.CmdEchoExtension.ExtensionMethod." + callClassName);
         Constructor cConstructor = c.getConstructor(
+                GlobalVariableReader.class,
                 IBurpExtenderCallbacks.class,
                 BurpAnalyzedRequest.class,
                 YamlReader.class,
@@ -54,6 +61,7 @@ public class CmdEcho {
                 Date.class,
                 Integer.class);
         this.cmdEcho = (IAppExtension) cConstructor.newInstance(
+                this.globalVariableReader,
                 this.callbacks,
                 this.analyzedRequest,
                 this.yamlReader,

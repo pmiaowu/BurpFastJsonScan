@@ -1,6 +1,7 @@
 package burp;
 
 import java.util.List;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
@@ -11,12 +12,15 @@ import burp.DnsLogModule.DnsLog;
 import burp.Bootstrap.YamlReader;
 import burp.Bootstrap.CustomBurpUrl;
 import burp.Bootstrap.BurpAnalyzedRequest;
+import burp.Bootstrap.GlobalVariableReader;
 import burp.CustomErrorException.TaskTimeoutException;
 import burp.Application.RemoteCmdExtension.RemoteCmd;
 
-public class BurpExtender implements IBurpExtender, IScannerCheck {
+public class BurpExtender implements IBurpExtender, IScannerCheck, IExtensionStateListener {
     public static String NAME = "FastJsonScan";
-    public static String VERSION = "2.1.3";
+    public static String VERSION = "2.2.0";
+
+    private GlobalVariableReader globalVariableReader;
 
     private IBurpExtenderCallbacks callbacks;
     private IExtensionHelpers helpers;
@@ -36,6 +40,15 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
         this.stdout = new PrintWriter(callbacks.getStdout(), true);
         this.stderr = new PrintWriter(callbacks.getStderr(), true);
 
+        // 全局变量的数据保存地址
+        // 用于在程序执行的过程中能够实时的修改变量数据使用
+        this.globalVariableReader = new GlobalVariableReader();
+
+        // 是否卸载扩展
+        // 用于卸载插件以后,把程序快速退出去,避免卡顿
+        // true = 已被卸载, false = 未卸载
+        this.globalVariableReader.putBooleanData("isExtensionUnload", false);
+
         // 标签界面
         this.tags = new Tags(callbacks, NAME);
 
@@ -44,6 +57,7 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
 
         callbacks.setExtensionName(NAME);
         callbacks.registerScannerCheck(this);
+        callbacks.registerExtensionStateListener(this);
 
         // 基本信息输出
         // 作者拿来臭美用的 ╰(*°▽°*)╯
@@ -72,6 +86,9 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
     public List<IScanIssue> doPassiveScan(IHttpRequestResponse baseRequestResponse) {
         List<IScanIssue> issues = new ArrayList<>();
 
+        List<String> domainNameBlacklist = this.yamlReader.getStringList("scan.domainName.blacklist");
+        List<String> domainNameWhitelist = this.yamlReader.getStringList("scan.domainName.whitelist");
+
         // 基础url解析
         CustomBurpUrl baseBurpUrl = new CustomBurpUrl(this.callbacks, baseRequestResponse);
 
@@ -83,6 +100,25 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
 
         // 判断是否开启插件
         if (!this.tags.getBaseSettingTagClass().isStart()) {
+            return null;
+        }
+
+        // 判断域名黑名单
+        if (domainNameBlacklist != null && domainNameBlacklist.size() >= 1) {
+            if (isMatchDomainName(baseBurpUrl.getRequestHost(), domainNameBlacklist)) {
+                return null;
+            }
+        }
+
+        // 判断域名白名单
+        if (domainNameWhitelist != null && domainNameWhitelist.size() >= 1) {
+            if (!isMatchDomainName(baseBurpUrl.getRequestHost(), domainNameWhitelist)) {
+                return null;
+            }
+        }
+
+        // 判断当前请求后缀,是否为url黑名单后缀
+        if (this.isUrlBlackListSuffix(baseBurpUrl)) {
             return null;
         }
 
@@ -271,7 +307,7 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
             return null;
         }
 
-        CmdEcho cmdEcho = new CmdEcho(this.callbacks, analyzedRequest, this.yamlReader, provider);
+        CmdEcho cmdEcho = new CmdEcho(this.globalVariableReader, this.callbacks, analyzedRequest, this.yamlReader, provider);
         if (!cmdEcho.run().isIssue()) {
             return null;
         }
@@ -312,7 +348,7 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
         }
 
         DnsLog dnsLog = new DnsLog(this.callbacks, this.yamlReader.getString("dnsLogModule.provider"));
-        RemoteCmd remoteCmd = new RemoteCmd(this.callbacks, analyzedRequest, dnsLog, this.yamlReader, provider);
+        RemoteCmd remoteCmd = new RemoteCmd(this.globalVariableReader, this.callbacks, analyzedRequest, dnsLog, this.yamlReader, provider);
         if (!remoteCmd.run().isIssue()) {
             return null;
         }
@@ -369,5 +405,119 @@ public class BurpExtender implements IBurpExtender, IScannerCheck {
             }
         }
         return number;
+    }
+
+    /**
+     * 判断是否查找的到指定的域名
+     *
+     * @param domainName     需匹配的域名
+     * @param domainNameList 待匹配的域名列表
+     * @return
+     */
+    private static Boolean isMatchDomainName(String domainName, List<String> domainNameList) {
+        domainName = domainName.trim();
+
+        if (domainName.length() <= 0) {
+            return false;
+        }
+
+        if (domainNameList == null || domainNameList.size() <= 0) {
+            return false;
+        }
+
+        if (domainName.contains(":")) {
+            domainName = domainName.substring(0, domainName.indexOf(":"));
+        }
+
+        String reverseDomainName = new StringBuffer(domainName).reverse().toString();
+
+        for (String domainName2 : domainNameList) {
+            domainName2 = domainName2.trim();
+
+            if (domainName2.length() <= 0) {
+                continue;
+            }
+
+            if (domainName2.contains(":")) {
+                domainName2 = domainName2.substring(0, domainName2.indexOf(":"));
+            }
+
+            String reverseDomainName2 = new StringBuffer(domainName2).reverse().toString();
+
+            if (domainName.equals(domainName2)) {
+                return true;
+            }
+
+            if (reverseDomainName.contains(".") && reverseDomainName2.contains(".")) {
+                List<String> splitDomainName = new ArrayList<String>(Arrays.asList(reverseDomainName.split("[.]")));
+
+                List<String> splitDomainName2 = new ArrayList<String>(Arrays.asList(reverseDomainName2.split("[.]")));
+
+                if (splitDomainName.size() <= 0 || splitDomainName2.size() <= 0) {
+                    continue;
+                }
+
+                if (splitDomainName.size() < splitDomainName2.size()) {
+                    for (int i = splitDomainName.size(); i < splitDomainName2.size(); i++) {
+                        splitDomainName.add("*");
+                    }
+                }
+
+                if (splitDomainName.size() > splitDomainName2.size()) {
+                    for (int i = splitDomainName2.size(); i < splitDomainName.size(); i++) {
+                        splitDomainName2.add("*");
+                    }
+                }
+
+                int ii = 0;
+                for (int i = 0; i < splitDomainName.size(); i++) {
+                    if (splitDomainName2.get(i).equals("*")) {
+                        ii = ii + 1;
+                    } else if (splitDomainName.get(i).equals(splitDomainName2.get(i))) {
+                        ii = ii + 1;
+                    }
+                }
+
+                if (ii == splitDomainName.size()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 判断是否url黑名单后缀
+     * 大小写不区分
+     * 是 = true, 否 = false
+     *
+     * @param burpUrl
+     * @return
+     */
+    private boolean isUrlBlackListSuffix(CustomBurpUrl burpUrl) {
+        if (!this.yamlReader.getBoolean("urlBlackListSuffix.config.isStart")) {
+            return false;
+        }
+
+        String noParameterUrl = burpUrl.getHttpRequestUrl().toString().split("\\?")[0];
+        String urlSuffix = noParameterUrl.substring(noParameterUrl.lastIndexOf(".") + 1);
+
+        List<String> suffixList = this.yamlReader.getStringList("urlBlackListSuffix.suffixList");
+        if (suffixList == null || suffixList.size() == 0) {
+            return false;
+        }
+
+        for (String s : suffixList) {
+            if (s.toLowerCase().equals(urlSuffix.toLowerCase())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public void extensionUnloaded() {
+        this.globalVariableReader.putBooleanData("isExtensionUnload", true);
     }
 }

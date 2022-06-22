@@ -5,6 +5,7 @@ import java.util.List;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
+import burp.Bootstrap.GlobalVariableReader;
 import burp.IBurpExtenderCallbacks;
 
 import burp.DnsLogModule.DnsLog;
@@ -13,6 +14,8 @@ import burp.Bootstrap.BurpAnalyzedRequest;
 import burp.Application.ExtensionInterface.IAppExtension;
 
 public class RemoteCmd {
+    private GlobalVariableReader globalVariableReader;
+
     private IBurpExtenderCallbacks callbacks;
 
     private BurpAnalyzedRequest analyzedRequest;
@@ -27,11 +30,14 @@ public class RemoteCmd {
     private Date startDate = new Date();
 
     public RemoteCmd(
+            GlobalVariableReader globalVariableReader,
             IBurpExtenderCallbacks callbacks,
             BurpAnalyzedRequest analyzedRequest,
             DnsLog dnsLog,
             YamlReader yamlReader,
             String callClassName) throws ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        this.globalVariableReader = globalVariableReader;
+
         this.callbacks = callbacks;
         this.analyzedRequest = analyzedRequest;
 
@@ -53,6 +59,7 @@ public class RemoteCmd {
 
         Class c = Class.forName("burp.Application.RemoteCmdExtension.ExtensionMethod." + callClassName);
         Constructor cConstructor = c.getConstructor(
+                GlobalVariableReader.class,
                 IBurpExtenderCallbacks.class,
                 BurpAnalyzedRequest.class,
                 DnsLog.class,
@@ -61,6 +68,7 @@ public class RemoteCmd {
                 Date.class,
                 Integer.class);
         this.remoteCmd = (IAppExtension) cConstructor.newInstance(
+                this.globalVariableReader,
                 this.callbacks,
                 this.analyzedRequest,
                 this.dnsLog,
