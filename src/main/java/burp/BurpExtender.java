@@ -18,7 +18,7 @@ import burp.Application.RemoteCmdExtension.RemoteCmd;
 
 public class BurpExtender implements IBurpExtender, IScannerCheck, IExtensionStateListener {
     public static String NAME = "FastJsonScan";
-    public static String VERSION = "2.2.0";
+    public static String VERSION = "2.2.1";
 
     private GlobalVariableReader globalVariableReader;
 

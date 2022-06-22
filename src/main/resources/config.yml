@@ -37,6 +37,8 @@ scan:
       - "*.dnslog.cn"
       - "*.ceye.io"
       - "*.fofa.so"
+      - "*.shodan.io"
+      - "*.github.com"
     # 域名白名单
     # 注: 黑名单优先级最高
     # 注: 为空表示关闭该功能
